@@ -2,7 +2,7 @@
 
 set -eo pipefail
 export DEBIAN_FRONTEND=noninteractive
-export DOKKU_REPO=${DOKKU_REPO:-"https://github.com/shamox/dokku.git"}
+export DOKKU_REPO=${DOKKU_REPO:-"https://github.com/ShamoX/dokku.git"}
 
 if ! which apt-get &>/dev/null
 then
