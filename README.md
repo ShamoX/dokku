@@ -15,12 +15,12 @@ best to use a fresh VM. The bootstrapper will install everything it needs.
 
 Everything (including docker, gitreceive, sshcommand, pluginhook, & buildstep):
 
-    $ wget -qO- https://raw.github.com/ginlane/dokku/master/bootstrap.sh | sudo bash
+    $ wget -qO- https://raw.github.com/shamox/dokku/master/bootstrap.sh | sudo bash
 
 This may take around 5 minutes. Certainly better than the several hours it takes to bootstrap Cloud Foundry.
 
 You'll have to add a public key associated with a username by doing something like this from your local machine:
 
-    $ cat ~/.ssh/id_rsa.pub | ssh ginlane.com "sudo sshcommand acl-add dokku git"
+    $ cat ~/.ssh/id_rsa.pub | ssh <your domain> "sudo sshcommand acl-add dokku git"
 
 

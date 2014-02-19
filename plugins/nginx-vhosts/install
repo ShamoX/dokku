@@ -1,8 +1,47 @@
 #!/usr/bin/env bash
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
-export DOKKU_ROOT=${DOKKU_ROOT:="/home/dokku"}
 
 # latest stable NGINX 1.4.x with websocket support
+KERNEL_VERSION="$(uname -v)"
+if [[ $KERNEL_VERSION == *Debian* ]] ;
+then
+	NGINX_INSTALLED="$(dpkg -s nginx-full ; echo $?)"
+	if [ $NGINX_INSTALLED -eq 0 ] ;
+	then
+		NGINX=/usr/sbin/nginx
+		NGINX_VERSION="$($NGINX -v 2>&1 | sed 's/nginx version: nginx\/\(.*\)/\1/')"
+		echo $NGINX_VERSION
+		IFS='.' read -a NGINX_VERSION <<< "$NGINX_VERSION"
+		if [ ${NGINX_VERSION[0]} -ge 1 ] && [ ${NGINX_VERSION[1]} -ge 4 ]; then
+			echo "Nginx already lastest version."
+			exit 0
+		else
+			echo "Nginx-full is not up to date, I try to upgrade it..."
+			apt-get install -t testing nginx-full
+			if [ $? -ne 0 ]; then
+				echo "Failed to install testing nginx (v1.4.4)."
+				echo "Please add this to your sources : /etc/apt/source.list.d/testing.list"
+				echo "Create the file and add this line :"
+				echo "  deb http://ftp.us.debian.org/debian testing main"
+				exit 1
+			else
+				exit 0
+			fi
+		fi
+	else
+		echo "Nginx-full is not installed, I try to install it..."
+		apt-get install -t testing nginx-full
+		if [ $? -ne 0 ]; then
+			echo "Failed to install testing nginx (v1.4.4)."
+			echo "Please add this to your sources : /etc/apt/source.list.d/testing.list"
+			echo "Create the file and add this line :"
+			echo "  deb http://ftp.us.debian.org/debian testing main"
+			exit 1
+		else
+			exit 0
+		fi
+	fi
+fi
 add-apt-repository -y ppa:nginx/stable
 apt-get update
 apt-get install -y nginx dnsutils
@@ -17,59 +56,10 @@ fi
 
 echo "include $DOKKU_ROOT/*/nginx.conf;" > /etc/nginx/conf.d/dokku.conf
 
-# set up docker API endpoint
-chmod 0777 /var/run/docker.sock
-rm -rf $DOKKU_ROOT/docker
-mkdir $DOKKU_ROOT/docker
-
-cat<<EOF > $DOKKU_ROOT/docker/nginx.conf
-upstream docker { server unix:///var/run/docker.sock; }
-server {
-  listen      80;
-  server_name docker.ginlane.com;
-  location    / {
-    proxy_pass  http://docker;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host \$http_host;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_set_header X-Forwarded-For \$remote_addr;
-    proxy_set_header X-Forwarded-Port \$server_port;
-    proxy_set_header X-Request-Start \$msec;
-  }
-}
-EOF
-
-# create local url for pulling in the SSH key when building docker containers later
-rm -rf $DOKKU_ROOT/localhost
-mkdir $DOKKU_ROOT/localhost
-cp /root/.ssh/id_rsa.pub $DOKKU_ROOT/localhost
-cp /root/.ssh/id_rsa $DOKKU_ROOT/localhost
-chmod 0644 $DOKKU_ROOT/localhost/id_rsa
-
-cat<<EOF > $DOKKU_ROOT/localhost/nginx.conf
-server {
-	listen       80;
-	server_name  localhost.com;
-	root $DOKKU_ROOT/localhost;
-
-	location /public_key {
-	    try_files $uri /id_rsa.pub \$uri;
-	}
-
-	location /private_key {
-	    try_files $uri /id_rsa \$uri;
-	}
-}
-EOF
-
-echo "127.0.0.1       localhost.com" >> /etc/hosts
-
 sed -i 's/# server_names_hash_bucket_size/server_names_hash_bucket_size/' /etc/nginx/nginx.conf
 
 if [[ ! -f  "$DOKKU_ROOT/VHOST" ]]; then
   [[ $(dig +short $(< "$DOKKU_ROOT/HOSTNAME")) ]] && cp "$DOKKU_ROOT/HOSTNAME" "$DOKKU_ROOT/VHOST"
 fi
 
-sudo /etc/init.d/nginx start
+/etc/init.d/nginx start
