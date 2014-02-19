@@ -2,7 +2,7 @@
 
 set -eo pipefail
 export DEBIAN_FRONTEND=noninteractive
-export DOKKU_REPO=${DOKKU_REPO:-"https://github.com/ginlane/dokku.git"}
+export DOKKU_REPO=${DOKKU_REPO:-"https://github.com/shamox/dokku.git"}
 
 if ! which apt-get &>/dev/null
 then
@@ -13,7 +13,7 @@ fi
 apt-get update
 apt-get install -y git make curl software-properties-common
 
-cd ~ && rm -rf dokku 
+cd ~ && rm -rf dokku
 cd ~ && test -d dokku || git clone $DOKKU_REPO
 cd dokku
 git fetch origin
