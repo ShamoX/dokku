@@ -41,10 +41,12 @@ then
 			exit 0
 		fi
 	fi
+	apt-get install dnsutils
+else
+	add-apt-repository -y ppa:nginx/stable
+	apt-get update
+	apt-get install -y nginx dnsutils
 fi
-add-apt-repository -y ppa:nginx/stable
-apt-get update
-apt-get install -y nginx dnsutils
 
 if ! grep -q dokku-nginx-reload "/etc/sudoers"; then
   touch /etc/sudoers.tmp
